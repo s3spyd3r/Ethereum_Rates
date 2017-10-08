@@ -1,0 +1,7 @@
+RewriteEngine on
+ 
+RewriteCond %{SCRIPT_FILENAME} !-d
+RewriteCond %{SCRIPT_FILENAME} !-f
+ 
+RewriteRule ^currency/(.*)$ ./index.php?currency=$1&404=false
+RewriteRule ^404$ ./index.php?404=true
