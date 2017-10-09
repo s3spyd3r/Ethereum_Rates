@@ -20,5 +20,7 @@ Ethereum Rates comes with a built in API. However, by default this API is set to
 - api/v1/calculate/{amount}/{currency} – Which will give you the current rate for x amount of ethereums (ex: api/v1/calculate/2/usd)
 
 ## Desktop
+![Example Print1](https://raw.githubusercontent.com/s3spyd3r/Ethereum_Rates/master/Screens/screencapture-Desktop.png)
 
 ## Mobile
+![Example Print2](https://raw.githubusercontent.com/s3spyd3r/Ethereum_Rates/master/Screens/screencapture-Mobile.png)
