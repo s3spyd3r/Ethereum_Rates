@@ -740,6 +740,14 @@ function getRates($currency='') {
             if (@file_put_contents($file, $json) === false) {
                 throw new Exception('Failed to write cache file');
             }
+
+            // Delete old cache files
+            $files = glob($jsonDir . '/*.json');
+            foreach ($files as $oldFile) {
+                if ($oldFile !== $file) {
+                    @unlink($oldFile);
+                }
+            }
         }
     } catch (Exception $e) {
         error_log('Ethereum Rates API Error: ' . $e->getMessage());
