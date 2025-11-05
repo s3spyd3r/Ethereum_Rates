@@ -2,7 +2,7 @@ $(function() {
   $.support.cors = true;
 
 	function refreshRates() {
-		$.getJSON(base_url + '/api/v1/rates', function(response) {
+		$.getJSON(base_url + '/api/v1/' + current_crypto + '/rates', function(response) {
 			$.each(response,function(i, obj) {
 				$('*[data-currency-rel="'+obj.code+'"]').fadeOut().text(" "+ obj.rate_formatted).fadeIn();
 			});
@@ -26,9 +26,9 @@ $(function() {
 		
 		loader.show();
 		
-		$.getJSON(base_url + '/api/v1/calculate/'+data[0]['value']+'/'+data[1]['value'], function(response) {
+		$.getJSON(base_url + '/api/v1/' + current_crypto + '/calculate/'+data[0]['value']+'/'+data[1]['value'], function(response) {
 		  loader.hide();
-			var template = '<p><span class="calc-amount">'+response.amount+'</span> ETH = <span class="calc-calculation">'+response.calc+'</span> <span class="calc-currency">'+response.currency+'</span></p><br/>'
+			var template = '<p><span class="calc-amount">'+response.amount+'</span> ' + current_crypto.toUpperCase() + ' = <span class="calc-calculation">'+response.calc+'</span> <span class="calc-currency">'+response.currency+'</span></p><br/>'
 			
 			$('#calc-response').hide().html(template).fadeIn();
 			

@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="<?= META_DESCRIPTION ?>">
   <title>
-    <?= isset($main_currency['name']) ? META_INDIVIDUAL_TITLE . $main_currency['name'] : META_TITLE ?>
+    <?= isset($main_currency['name']) ? str_replace('Crypto', strtoupper($crypto), META_INDIVIDUAL_TITLE) . $main_currency['name'] : str_replace('Crypto', strtoupper($crypto), META_TITLE) ?>
   </title>
   <link href="<?= $base_url ?>/css/bootstrap.min.css" rel="stylesheet">
   <link href="<?= $base_url ?>/css/bootstrap-select.min.css" rel="stylesheet">
@@ -23,10 +23,18 @@
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
       </button>
-      <a class="navbar-brand" href="<?= $base_url ?>"><?= BRAND_NAME ?></a>
+      <a class="navbar-brand" href="<?= $base_url ?>"><?= str_replace('Crypto', strtoupper($crypto), BRAND_NAME) ?></a>
     </div>
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav navbar-right">
+        <li class="dropdown">
+          <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Select Crypto <span class="caret"></span></a>
+          <ul class="dropdown-menu">
+            <?php foreach (SUPPORTED_CRYPTOS as $crypto_symbol): ?>
+              <li><a href="?crypto=<?= strtolower($crypto_symbol) ?>"><?= $crypto_symbol ?></a></li>
+            <?php endforeach; ?>
+          </ul>
+        </li>
         <li><a href="#" data-toggle="modal" data-target="#calculate-modal">Calculator</a></li>
       </ul>
     </div>
@@ -45,7 +53,7 @@
       <?php endif; ?>
       <div class="col-md-6">
         <h3>CURRENT RATE</h3>
-        <p><small class="">1 ETH <i class="glyphicon glyphicon-transfer"></i>
+        <p><small class="">1 <?= strtoupper($crypto) ?> <i class="glyphicon glyphicon-transfer"></i>
          <?= isset($main_currency['name']) ? $main_currency['name'] : 'Unknown Currency' ?>
          -
          <?= isset($main_currency['code']) ? $main_currency['code'] : 'N/A' ?>
@@ -57,10 +65,10 @@
       </div>
       <div id="popular-cur" class="col-md-6">
         <h3>POPULAR CURRENCIES</h3>
-        <p><small>1 ETH <i class="glyphicon glyphicon-transfer"></i></small></p>
+        <p><small>1 <?= strtoupper($crypto) ?> <i class="glyphicon glyphicon-transfer"></i></small></p>
         <ul id="popular-cur-list">
           <?php foreach ($popular_currencies as $object): ?>
-          <li><a href="<?= $base_url ?>/currency/<?= $object['code'] ?>"><img src="<?= $base_url ?>/images/flags/<?= $object['code'] ?>.png" class="flag-icon">
+          <li><a href="?crypto=<?= strtolower($crypto) ?>&currency=<?= $object['code'] ?>"><img src="<?= $base_url ?>/images/flags/<?= $object['code'] ?>.png" class="flag-icon">
             <?= $object['name'] ?>
             </a> <span class="pull-right"> <span data-currency-rel="<?= $object['code'] ?>">
             <?= $object['rate_formatted'] ?>
@@ -95,7 +103,7 @@
     <div class="col-md-4">
       <ul class="cur-list">
         <?php foreach ($column as $object): ?>
-        <li><a href="<?= $base_url ?>/currency/<?= $object['code'] ?>"><img src="<?= $base_url ?>/images/flags/<?= $object['code'] ?>.png" class="flag-icon">
+        <li><a href="?crypto=<?= strtolower($crypto) ?>&currency=<?= $object['code'] ?>"><img src="<?= $base_url ?>/images/flags/<?= $object['code'] ?>.png" class="flag-icon">
           <?= $object['name'] ?>
           </a><span class="pull-right"><span data-currency-rel="<?= $object['code'] ?>">
           <?= $object['rate_formatted'] ?>
@@ -121,10 +129,10 @@
         </div>
         <form id="calculate-form" class="form-inline">
           <div class="modal-body text-center">
-            <h2 class="modal-title" id="myModalLabel">Convert Ethereums</h2>
+            <h2 class="modal-title" id="myModalLabel">Convert <?= strtoupper($crypto) ?></h2>
             <div id="calc-response"></div>
             <div class="form-group">
-              <input type="text" class="form-control" name="amount" autofocus placeholder="Ethereum amount: 1">
+              <input type="text" class="form-control" name="amount" autofocus placeholder="<?= strtoupper($crypto) ?> amount: 1">
             </div>
             <div class="form-group">
               <select class="selectpicker show-menu-arrow" name="currency" data-live-search="true" title="Choose currency.." style="width:100%;">
@@ -152,6 +160,7 @@
 
 <script>
   var base_url = "<?= $base_url ?>";
+  var current_crypto = "<?= $crypto ?>";
   var current_currency = "<?= $main_currency['code'] ?? 'USD' ?>";
 </script>
 <script src="<?= $base_url ?>/js/jquery.min.js"></script>

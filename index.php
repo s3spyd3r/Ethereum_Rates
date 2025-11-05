@@ -2,7 +2,12 @@
 
 require_once 'library/framework.class.php';
 
-$frame_work = new FrameWork();
+$crypto = $_GET['crypto'] ?? DEFAULT_CRYPTO;
+if (!in_array(strtoupper($crypto), SUPPORTED_CRYPTOS)) {
+    $crypto = DEFAULT_CRYPTO;
+}
+
+$frame_work = new FrameWork($crypto);
 
 $currency = $_GET['currency'] ?? '';
 $error_404 = isset($_GET['404']);
@@ -15,8 +20,6 @@ try {
     $base_url = $frame_work->base_url;
 } catch (\Exception $e) {
     $error_message = "Error: " . $e->getMessage();
-    // You might want to set default values for the variables below
-    // to avoid errors in the template if the API call fails.
     $main_currency = [];
     $popular_currencies = [];
     $all_currencies = [[],[],[]];

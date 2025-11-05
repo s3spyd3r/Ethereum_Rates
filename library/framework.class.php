@@ -8,13 +8,15 @@ class FrameWork {
     public string $template_color;
     public string $api_url;
     public string $base_url;
+    public string $crypto;
 
-    public function __construct() {
+    public function __construct(string $crypto = DEFAULT_CRYPTO) {
         $this->base_url = BASE_URL;
-        $this->api_url = API_URL; // API_URL from config.php is now an absolute URL
+        $this->api_url = API_URL;
         $this->main_currency = MAIN_CURRENCY;
         $this->popular_currencies = POPULAR_CURRENCIES;
         $this->template_color = TEMPLATE_COLOR;
+        $this->crypto = $crypto;
     }
 
     public function getTemplateSettings(): string {
@@ -30,7 +32,7 @@ class FrameWork {
             throw new \InvalidArgumentException('No currency specified');
         }
 
-        $response = $this->curl('rates/' . $this->main_currency);
+        $response = $this->curl($this->crypto . '/rates/' . $this->main_currency);
         
         $data = json_decode($response, true);
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
@@ -63,28 +65,23 @@ class FrameWork {
 
     private function getAllCurrencyRatesFlattened(): array {
         try {
-            $response = $this->curl('rates');
+            $response = $this->curl($this->crypto . '/rates');
             $data = json_decode($response, true);
 
             if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
-                // Handle cases where the API returns something that is not valid JSON
                 return [];
             }
             
-            // The API returns an array with an 'error' key on failure.
             if (isset($data['error']) && $data['error']) {
-                // Or if it returns a json error
                 return [];
             }
             
-            // The api can return the data in a 'data' key
             if (isset($data['data']) && is_array($data['data'])) {
                 return $data['data'];
             }
 
             return $data;
         } catch (\Exception $e) {
-            // Log the exception message if you have a logger
             return [];
         }
     }

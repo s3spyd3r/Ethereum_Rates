@@ -3,15 +3,15 @@
 class RateService {
     private string $cacheDir;
     private array $currencies;
-    private string $apiUrl = 'https://api.coinbase.com/v2/exchange-rates?currency=ETH';
+    private string $apiUrlPattern = 'https://api.coinbase.com/v2/exchange-rates?currency=%s';
 
     public function __construct(string $cacheDir, array $currencies) {
         $this->cacheDir = $cacheDir;
         $this->currencies = $currencies;
     }
 
-    public function getRates(string $currency = ''): array {
-        $data = $this->getRatesFromCacheOrApi();
+    public function getRates(string $crypto, string $currency = ''): array {
+        $data = $this->getRatesFromCacheOrApi($crypto);
 
         if (!empty($currency)) {
             $currency = strtoupper($currency);
@@ -32,10 +32,12 @@ class RateService {
         return $formattedRates;
     }
     
-    public function calculate(float $amount, string $currency): array {
-        $rates = $this->getRates($currency);
-        $calc = round($amount * $rates['rate']);
+    public function calculate(string $crypto, float $amount, string $currency): array {
+        $rates = $this->getRates($crypto, $currency);
+        $calc = $amount * $rates['rate'];
+        
         $formatter = new NumberFormatter(MY_LOCALE, NumberFormatter::CURRENCY);
+        $formatter->setAttribute(NumberFormatter::MAX_FRACTION_DIGITS, 8);
         $calcFormatted = $formatter->formatCurrency($calc, $currency);
 
         return [
@@ -45,13 +47,13 @@ class RateService {
         ];
     }
 
-    private function getRatesFromCacheOrApi(): array {
+    private function getRatesFromCacheOrApi(string $crypto): array {
         if (!is_dir($this->cacheDir)) {
             mkdir($this->cacheDir, 0777, true);
         }
 
-        $cacheFile = $this->cacheDir . '/rates.json';
-        $cacheTime = $this->cacheDir . '/rates.time';
+        $cacheFile = $this->cacheDir . '/rates_' . $crypto . '.json';
+        $cacheTime = $this->cacheDir . '/rates_' . $crypto . '.time';
 
         if (file_exists($cacheFile) && file_exists($cacheTime) && (time() - filemtime($cacheTime) < 60)) {
             $cachedData = json_decode(file_get_contents($cacheFile), true);
@@ -60,7 +62,7 @@ class RateService {
             }
         }
 
-        $response = $this->fetchFromApi();
+        $response = $this->fetchFromApi($crypto);
         file_put_contents($cacheFile, $response);
         touch($cacheTime);
 
@@ -72,14 +74,16 @@ class RateService {
         return $data['data']['rates'];
     }
 
-    private function fetchFromApi(): string {
+    private function fetchFromApi(string $crypto): string {
         $ch = curl_init();
         if ($ch === false) {
             throw new \RuntimeException('Failed to initialize cURL');
         }
 
+        $apiUrl = sprintf($this->apiUrlPattern, $crypto);
+
         curl_setopt_array($ch, [
-            CURLOPT_URL => $this->apiUrl,
+            CURLOPT_URL => $apiUrl,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_TIMEOUT => 10,
