@@ -7,15 +7,12 @@ if (!is_file('library/config.php')) {
 else
 {
 	require_once 'library/framework.class.php';
-  $frame_work = new FrameWork();
+	$frame_work = new FrameWork();
 
 	$main_currency = $frame_work->getMainCurrecyRate(((isset($_GET['currency']))?$_GET['currency']:''));
 	$popular_currencies = $frame_work->getPopularCurrencyRates();
 	$all_currencies = $frame_work->getAllCurrencyRates();
 	$template_color = $frame_work->getTemplateSettings();
-
-	if ((int)$main_currency['error'])
-		header('Location: '.BASE_URL.'?404=true');//REDIRECT TO 404 PAGE
 }
 ?>
 <!DOCTYPE html>
@@ -33,6 +30,7 @@ else
   <link href="<?=$frame_work->base_url;?>/css/style.min.css" rel="stylesheet">
 </head>
 <body>
+
 <nav id="top-navigation" class="navbar navbar-default navbar-static-top" style="background-color:<?=$template_color;?>;">
   <div class="container">
     <div class="navbar-header">
@@ -51,25 +49,26 @@ else
     </div>
   </div>
 </nav>
+
 <div id="main-banner" class="jumbotron" style="background-color:<?=$template_color;?>;">
   <div class="container">
     <div class="row">
-      <? if(isset($_GET['404']) && $_GET['404'] == "true"): header("HTTP/1.0 404 Not Found");?>
+      <?php if(isset($_GET['404']) && $_GET['404'] == "true"): header("HTTP/1.0 404 Not Found");?>
       <div class="col-md-12 text-center" id="error-404">
         <h1>Error 404 <br/>
           Could not be found</h1>
         <hr/>
       </div>
-      <? endif ?>
+      <?php endif; ?>
       <div class="col-md-6">
         <h3>CURRENT RATE</h3>
         <p><small class="">1 ETH <i class="glyphicon glyphicon-transfer"></i>
-          <?=$main_currency['name']?>
-          -
-          <?=$main_currency['code']?>
+         <?=isset($main_currency['name']) ? $main_currency['name'] : 'Unknown Currency'?>
+         -
+         <?=isset($main_currency['code']) ? $main_currency['code'] : 'N/A'?>
         </small></p>
         <h1><img src="<?=$frame_work->base_url;?>/images/flags/<?=$main_currency['code'];?>.png" class="flag-icon"><span data-currency-rel="<?=$main_currency['code']?>">
-          <?=$main_currency['rate_formatted']?>
+          <?=isset($main_currency['rate_formatted']) ? $main_currency['rate_formatted'] : 'N/A'?>
         </span></h1>
         <br/>
       </div>
@@ -77,20 +76,21 @@ else
         <h3>POPULAR CURRENCIES</h3>
         <p><small>1 ETH <i class="glyphicon glyphicon-transfer"></i></small></p>
         <ul id="popular-cur-list">
-          <?php foreach($popular_currencies as $object):?>
+          <?php foreach($popular_currencies as $object): ?>
           <li><a href="<?=$frame_work->base_url;?>/currency/<?=$object['code'];?>"><img src="<?=$frame_work->base_url;?>/images/flags/<?=$object['code'];?>.png" class="flag-icon">
             <?=$object['name'];?>
             </a> <span class="pull-right"> <span data-currency-rel="<?=$object['code'];?>">
             <?=$object['rate_formatted'];?>
             </span> </span>
             <?=$object['code'];?>
-          </span></li>
-          <? endforeach; ?>
+          </li>
+          <?php endforeach; ?>
         </ul>
       </div>
     </div>
   </div>
 </div>
+
 <div class="container">
   <span id="cur-filter" class="pull-right">
     <div class="input-group pull-right">
@@ -104,7 +104,7 @@ else
   <div class="row">
     <div class="col-md-4">
       <ul class="cur-list">
-        <?php foreach($all_currencies[0] as $object):?>
+        <?php foreach($all_currencies[0] as $object): ?>
         <li><a href="<?=$frame_work->base_url;?>/currency/<?=$object['code'];?>"><img src="<?=$frame_work->base_url;?>/images/flags/<?=$object['code'];?>.png" class="flag-icon">
           <?=$object['name'];?>
           </a><span class="pull-right"><span data-currency-rel="<?=$object['code'];?>">
@@ -112,12 +112,12 @@ else
           </span>
           <?=$object['code'];?>
         </span></li>
-        <? endforeach; ?>
+        <?php endforeach; ?>
       </ul>
     </div>
     <div class="col-md-4">
       <ul class="cur-list">
-        <?php foreach($all_currencies[1] as $object):?>
+        <?php foreach($all_currencies[1] as $object): ?>
         <li><a href="<?=$frame_work->base_url;?>/currency/<?=$object['code'];?>"><img src="<?=$frame_work->base_url;?>/images/flags/<?=$object['code'];?>.png" class="flag-icon">
           <?=$object['name'];?>
           </a><span class="pull-right"><span data-currency-rel="<?=$object['code'];?>">
@@ -125,12 +125,12 @@ else
           </span>
           <?=$object['code'];?>
         </span></li>
-        <? endforeach; ?>
+        <?php endforeach; ?>
       </ul>
     </div>
     <div class="col-md-4">
       <ul class="cur-list">
-        <?php foreach($all_currencies[2] as $object):?>
+        <?php foreach($all_currencies[2] as $object): ?>
         <li><a href="<?=$frame_work->base_url;?>/currency/<?=$object['code'];?>"><img src="<?=$frame_work->base_url;?>/images/flags/<?=$object['code'];?>.png" class="flag-icon">
           <?=$object['name'];?>
           </a><span class="pull-right"><span data-currency-rel="<?=$object['code'];?>">
@@ -138,7 +138,7 @@ else
           </span>
           <?=$object['code'];?>
         </span></li>
-        <? endforeach; ?>
+        <?php endforeach; ?>
       </ul>
     </div>
   </div>
@@ -327,7 +327,8 @@ else
               </select>
             </div>
             <div class="clearfix"></div>
-            <img src="<?=$frame_work->base_url;?>/images/loader.gif" id="calc-loader"/></div>
+            <img src="<?=$frame_work->base_url;?>/images/loader.gif" id="calc-loader"/>
+          </div>
           <div class="modal-footer text-center">
             <div class="text-center">
               <button type="submit" class="btn btn-default">Convert</button>
@@ -338,23 +339,23 @@ else
     </div>
   </div>
   <footer>
-    <p>© <?=date('Y')?> <a href="http://www.rodriguesfilipe.net">http://www.rodriguesfilipe.net</a></p>
+    <p>&copy; <?=date('Y')?> <a href="http://www.rodriguesfilipe.net">http://www.rodriguesfilipe.net</a></p>
   </footer>
 </div>
-<script src="<?=$frame_work->base_url;?>/js/jquery.min.js"></script> 
-<script src="<?=$frame_work->base_url;?>/js/bootstrap.min.js"></script> 
-<script src="<?=$frame_work->base_url;?>/js/bootstrap-select.min.js"></script> 
+
+<script src="<?=$frame_work->base_url;?>/js/jquery.min.js"></script>
+<script src="<?=$frame_work->base_url;?>/js/bootstrap.min.js"></script>
+<script src="<?=$frame_work->base_url;?>/js/bootstrap-select.min.js"></script>
 <script>
 $(function() {
-
   $.support.cors = true;
 
 	function refreshRates() {
-		  $.getJSON('<?=$frame_work->base_url;?>/api/v1/rates', function(response) {
-			  $.each(response,function(i, obj) {
-				  $('*[data-currency-rel="'+obj.code+'"]').fadeOut().text(" "+ obj.rate_formatted).fadeIn();
-				});
+		$.getJSON('<?=$frame_work->base_url;?>/api/v1/rates', function(response) {
+			$.each(response,function(i, obj) {
+				$('*[data-currency-rel="'+obj.code+'"]').fadeOut().text(" "+ obj.rate_formatted).fadeIn();
 			});
+		});
 	}
 	
 	$(document).on('keyup',"#filter", function() {
@@ -378,7 +379,7 @@ $(function() {
 		  loader.hide();
 			var template = '<p><span class="calc-amount">'+response.amount+'</span> ETH = <span class="calc-calculation">'+response.calc+'</span> <span class="calc-currency">'+response.currency+'</span></p><br/>'
 			
-			  $('#calc-response').hide().html(template).fadeIn();
+			$('#calc-response').hide().html(template).fadeIn();
 			
 		})
 		e.preventDefault();

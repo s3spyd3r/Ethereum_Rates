@@ -22,32 +22,65 @@ class FrameWork {
 	}
 
 	public function getMainCurrecyRate($currency='') {
-		if ($currency)
+		if (!empty($currency)) {
 			$this->main_currency = $currency;
+		}
 		
-		return json_decode($this->curl('rates/'.$this->main_currency), true);
+		if (empty($this->main_currency)) {
+			return ['error' => true, 'message' => 'No currency specified'];
+		}
+
+		$response = $this->curl('rates/'.$this->main_currency);
+		if ($response === false) {
+			return ['error' => true, 'message' => 'Failed to fetch currency data'];
+		}
+
+		$data = json_decode($response, true);
+		if (!is_array($data)) {
+			return ['error' => true, 'message' => 'Invalid currency data received'];
+		}
+
+		return $data;
 	}
 
 	public function getPopularCurrencyRates() {
 		$arr = [];
-
-		foreach ($this->popular_currencies as $currency)
-			$arr[] = json_decode($this->curl('rates/'.$currency), true);
+		
+		if (!empty($this->popular_currencies) && is_array($this->popular_currencies)) {
+			foreach ($this->popular_currencies as $currency) {
+				$response = $this->curl('rates/'.$currency);
+				if ($response !== false) {
+					$data = json_decode($response, true);
+					if ($data !== null) {
+						$arr[] = $data;
+					}
+				}
+			}
+		}
 
 		return $arr;
 	}
 
 	public function getAllCurrencyRates() {
-		$arr = [];
-		$rows = json_decode($this->curl('rates'), true);
+		$arr = [[], [], []];  // Initialize all three arrays
+		
+		$response = $this->curl('rates');
+		if ($response === false) {
+			return $arr;
+		}
+		
+		$rows = json_decode($response, true);
+		if (!is_array($rows)) {
+			return $arr;
+		}
 
-		foreach ($rows as $k=>$row ) {
-			if ($row['name']) {
+		foreach ($rows as $k => $row) {
+			if (isset($row['name']) && !empty($row['name'])) {
 				if ($k <= 26) {
 					$arr[0][] = $row;
-				}else if($k<=53) {
+				} else if ($k <= 53) {
 					$arr[1][] = $row;
-				}else {
+				} else {
 					$arr[2][] = $row;
 				}
 			}
@@ -58,14 +91,27 @@ class FrameWork {
 	//THIS IS USING CURL TO GET FROM OUR API - /api/v1/{endpoint}
 	private function curl($end_point) {
 		$curl = curl_init();
+		if ($curl === false) {
+			return false;
+		}
+
 		curl_setopt_array($curl, array(
 			CURLOPT_RETURNTRANSFER => 1,
-			CURLOPT_URL => $this->api_url."/".$end_point
+			CURLOPT_URL => $this->api_url."/".$end_point,
+			CURLOPT_CONNECTTIMEOUT => 5,
+			CURLOPT_TIMEOUT => 10,
+			CURLOPT_SSL_VERIFYPEER => false
 		));
 
 		$resp = curl_exec($curl);
-		curl_close($curl);
+		$httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+		
+		if (curl_errno($curl) || $httpCode !== 200) {
+			curl_close($curl);
+			return false;
+		}
 
+		curl_close($curl);
 		return $resp;
 	}		
 }

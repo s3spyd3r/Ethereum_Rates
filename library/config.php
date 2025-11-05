@@ -1,6 +1,6 @@
 <?php 
 
-define('BASE_URL','http://www.rodriguesfilipe.net/ethereum');
+define('BASE_URL','http://localhost/crypto');
 define('API_URL','api/v1');
 define('MY_LOCALE','en-US');
 define('MAIN_CURRENCY','USD');

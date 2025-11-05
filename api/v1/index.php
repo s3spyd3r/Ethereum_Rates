@@ -11,32 +11,31 @@ require_once('vendor/autoload.php');
 $app = new \Slim\App;
 
 //API ENDPOINT TO GET ALL RATES
+
 $app->get('/rates', function (Request $request, Response $response) {
-   
-	$rates = getRates();
-   
-	if (!$rates['error'])
-		$status = 200;
-	else
-		$status = 400;
-   
-	return $response->withJson($rates, $status);
+   $rates = getRates();
+   $status = (!$rates['error']) ? 200 : 400;
+   $response = $response->withHeader('Content-Type', 'application/json');
+   $response = $response->withStatus($status);
+   $response->getBody()->write(json_encode($rates));
+   return $response;
 });
 
 //API ENDPOINT TO GET RATES FOR A CERTAIN CURRENCY
+
 $app->get('/rates/{currency}', function (Request $request, Response $response) {
-  	
-	$currency = $request->getAttribute('currency');
-	
-	if($currency || !is_string($currency)) {
-		$rates = getRates($currency);
-   		$status = 200;
-	}else {
-		$rates = array('error'=>true,'message'=>'Could not fetch results');
-		$status = 400;
-	}
-   
-	return $response->withJson($rates, $status);
+   $currency = $request->getAttribute('currency');
+   if($currency || !is_string($currency)) {
+	   $rates = getRates($currency);
+	   $status = 200;
+   } else {
+	   $rates = array('error'=>true,'message'=>'Could not fetch results');
+	   $status = 400;
+   }
+   $response = $response->withHeader('Content-Type', 'application/json');
+   $response = $response->withStatus($status);
+   $response->getBody()->write(json_encode($rates));
+   return $response;
 });
 
 //API ENDPOINT FOR CALCULATING A CERTAIN CURRENCY
@@ -48,18 +47,27 @@ $app->get('/calculate/{amount}/{currency}', function (Request $request, Response
 	if(!$amount || !is_string($currency) || !is_numeric($amount)) {
 		$arr = array('error'=>true,'message'=>'Could not fetch results');
 		$status = 400;
-	}else {
-		$rate = getRates($currency); 
-		$calc = round($amount * $rate['rate']);
-	   
-		$formatter = new NumberFormatter(MY_LOCALE, NumberFormatter::CURRENCY);
-		$calc = $formatter->formatCurrency($calc, $currency);
-	   
-		$arr = array('amount'=>$amount,'calc'=>$calc,'currency'=>$currency);
-		$status = 200;
+	} else {
+		$rate = getRates($currency);
+		if (isset($rate['error']) && $rate['error']) {
+			$arr = array('error'=>true,'message'=>'Could not fetch rate for currency: ' . $currency);
+			$status = 400;
+		} else if (!isset($rate['rate'])) {
+			$arr = array('error'=>true,'message'=>'Rate not available for currency: ' . $currency);
+			$status = 400;
+		} else {
+			$calc = round($amount * $rate['rate']);
+			$formatter = new NumberFormatter(MY_LOCALE, NumberFormatter::CURRENCY);
+			$calc = $formatter->formatCurrency($calc, $currency);
+			$arr = array('amount'=>$amount,'calc'=>$calc,'currency'=>$currency);
+			$status = 200;
+		}
 	}
 
-	return $response->withJson($arr, $status);
+	$response = $response->withHeader('Content-Type', 'application/json');
+	$response = $response->withStatus($status);
+	$response->getBody()->write(json_encode($arr));
+	return $response;
 });
 
 //1. CHECK IF WE HAVE A FILE WITHIN A MINUTE OLD
@@ -67,11 +75,24 @@ $app->get('/calculate/{amount}/{currency}', function (Request $request, Response
 //3. SAVES THE FILE FOR LOCAL JSON CACHE
 //4. RETURNS AN ARRAY FOR JSON OUTPUT
 function getRates($currency='') {
-	$date = new DateTime();
-	$time = time();
-	$file = 'json/'.$time.".json";
-	$arr  = array();
-	$api_url = "https://api.coinbase.com/v2/exchange-rates?currency=ETH";
+    $date = new DateTime();
+    $time = time();
+    $file = 'json/'.$time.".json";
+    $arr  = array();
+    $api_url = "https://api.coinbase.com/v2/exchange-rates?currency=ETH";
+    
+    try {
+        // Make the json directory path absolute
+        $jsonDir = __DIR__ . '/json';
+        if (!is_dir($jsonDir)) {
+            if (!mkdir($jsonDir, 0777, true)) {
+                error_log("Failed to create directory: " . $jsonDir);
+                throw new Exception('Failed to create json directory');
+            }
+        }
+        
+        // Make file path absolute
+        $file = $jsonDir . '/' . $time . ".json";
 	
 	$api_currencies = array
 	(
@@ -636,48 +657,141 @@ function getRates($currency='') {
 			),
 	);
 	
-	$files = scandir('json', SCANDIR_SORT_DESCENDING);
-	$last  = (int)str_replace(".json","",$files[0]);
+	try {
+        $files = @scandir($jsonDir, SCANDIR_SORT_DESCENDING);
+        if ($files === false) {
+            error_log("Failed to scan directory: " . $jsonDir);
+            throw new Exception('Failed to read cache directory');
+        }
+        
+        $last = 0;
+        foreach ($files as $f) {
+            if (preg_match('/^(\d+)\.json$/', $f, $matches)) {
+                $last = (int)$matches[1];
+                break;
+            }
+        }
 
-	if($last && $last+60 >= $time) {
-		$json = file_get_contents('json/'.$last.".json");
-	}else {
-		$a = json_decode(file_get_contents($api_url), true);
-		$arr = $a['data'];
-		$json = json_encode($arr);
-		file_put_contents($file, $json);
-	}
-	
-	$jsonArr = json_decode($json, true);
+        if($last && $last+60 >= $time) {
+            $cacheFile = $jsonDir . '/' . $last . ".json";
+            $json = @file_get_contents($cacheFile);
+            if ($json === false) {
+                error_log("Failed to read cache file: " . $cacheFile);
+                throw new Exception('Failed to read cached JSON file');
+            }
+        } else {
+            // Use CURL instead of file_get_contents
+            if (!function_exists('curl_init')) {
+                error_log("CURL is not installed");
+                throw new Exception('CURL is not installed');
+            }
 
-	$arr = array();
-	$formatter = new NumberFormatter(MY_LOCALE, NumberFormatter::CURRENCY);
+            $ch = curl_init();
+            if ($ch === false) {
+                error_log("Failed to initialize CURL");
+                throw new Exception('Failed to initialize CURL');
+            }
+
+            curl_setopt_array($ch, [
+                CURLOPT_URL => $api_url,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_TIMEOUT => 10,
+                CURLOPT_CONNECTTIMEOUT => 5,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_MAXREDIRS => 3,
+                CURLOPT_USERAGENT => 'Mozilla/5.0'
+            ]);
+
+            $api_response = curl_exec($ch);
+            $curl_error = curl_error($ch);
+            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            error_log("API Response Code: " . $http_code);
+            if ($curl_error) {
+                error_log("CURL Error: " . $curl_error);
+            }
+
+            if ($api_response === false) {
+                throw new Exception('Failed to fetch data from Coinbase API: ' . $curl_error);
+            }
+
+            if ($http_code !== 200) {
+                throw new Exception('API returned error code: ' . $http_code);
+            }
+            
+            $a = json_decode($api_response, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new Exception('JSON decode error: ' . json_last_error_msg());
+            }
+            
+            if (!isset($a['data'])) {
+                error_log('API Response: ' . print_r($a, true));
+                throw new Exception('Invalid API response format - data field missing');
+            }
+            
+            $arr = $a['data'];
+            $json = json_encode($arr);
+            if ($json === false) {
+                throw new Exception('Failed to encode API response');
+            }
+            
+            if (@file_put_contents($file, $json) === false) {
+                throw new Exception('Failed to write cache file');
+            }
+        }
+    } catch (Exception $e) {
+        error_log('Ethereum Rates API Error: ' . $e->getMessage());
+        return array('error' => true, 'message' => 'Could not fetch exchange rates. Please try again later.');
+    }
 	
-	foreach($jsonArr['rates'] as $code=>$rate) {
-		if(array_key_exists($code, $api_currencies)) {
-			if(!$currency) {
-				$a = $api_currencies[$code];
-				$a['rate'] = $rate;
-				$a['rate_formatted'] = $formatter->formatCurrency($rate, $code);
-				$arr[] = $a;
-			}else{
-				if($code == strtoupper($currency)) {
+        $jsonArr = json_decode($json, true);
+        if ($jsonArr === null) {
+            throw new Exception('Failed to decode JSON data');
+        }
+
+        $arr = array();
+        // Check if we can use NumberFormatter
+        if (class_exists('NumberFormatter')) {
+            $formatter = new NumberFormatter(MY_LOCALE, NumberFormatter::CURRENCY);
+        }
+        
+        if (!isset($jsonArr['rates'])) {
+            error_log('Invalid JSON structure: ' . print_r($jsonArr, true));
+            throw new Exception('Invalid rate data format');
+        }
+        
+		foreach($jsonArr['rates'] as $code=>$rate) {
+			if(array_key_exists($code, $api_currencies)) {
+				if(!$currency) {
 					$a = $api_currencies[$code];
 					$a['rate'] = $rate;
 					$a['rate_formatted'] = $formatter->formatCurrency($rate, $code);
-					$arr = $a;
-					break;
+					$arr[] = $a;
+				}else{
+					if($code == strtoupper($currency)) {
+						$a = $api_currencies[$code];
+						$a['rate'] = $rate;
+						$a['rate_formatted'] = $formatter->formatCurrency($rate, $code);
+						$arr = $a;
+						break;
+					}
 				}
 			}
 		}
-	}
-	
-	if(!sizeof($arr))
-		$arr = array('error'=>true,'message'=>'Could not fetch results.');
-	else
-		$arr['error'] = false;
-	
-	return $arr;
+        
+        if(!sizeof($arr)) {
+            throw new Exception('No matching currency rates found');
+        }
+        
+        $arr['error'] = false;
+        return $arr;
+        
+    } catch (Exception $e) {
+        error_log('Ethereum Rates API Error: ' . $e->getMessage());
+        return array('error' => true, 'message' => 'Could not fetch exchange rates. Please try again later.');
+    }
 }
 
 $app->run();
